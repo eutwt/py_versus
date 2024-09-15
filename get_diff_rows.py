@@ -13,12 +13,13 @@ def get_diff_rows(
   col_a = table_a[col][matches['common']['a']]
   col_b = table_b[col][matches['common']['b']]
   out_df = matches['common'].filter(col_a != col_b)
-  print('hi', flush = True)
-  print(out_df['a'])
-  print(type(out_df['a']))
-  out = {
-    'row_a': out_df['a'],
-    'row_b': out_df['b']
-  }
-  
-  return out
+  out_df.columns = ['row_a', 'row_b']
+  return IndexDF(out_df)
+
+class IndexDF:
+  def __init__(self, df: pl.DataFrame):
+      self.df = df
+
+  def __repr__(self):
+      repr_str = f"IndexDF: ({self.df.height})"
+      return repr_str

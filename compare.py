@@ -23,10 +23,10 @@ def compare(
   diff_rows = [
     diff.get_diff_rows(col, table_a, table_b, matches = matches)
     for col in tbl_contents['compare']['column']]
-  n_diffs = [len(x['row_a']) for x in diff_rows]
+  n_diffs = pl.Series(len(x.df['row_a']) for x in diff_rows)
   tbl_contents['compare'] = tbl_contents['compare'] \
-    .with_columns(diff_rows = pl.Series(diff_rows),
-                  n_diffs = pl.Series(n_diffs)) \
+    .with_columns(diff_rows = pl.Series(diff_rows, dtype = pl.Object),
+                  n_diffs = n_diffs) \
     .select('column', 'n_diffs', 'class_a', 'class_b', 'diff_rows')
 
   out = {
@@ -34,7 +34,8 @@ def compare(
     'by': tbl_contents['by'],
     'intersection': tbl_contents['compare'],
     'unmatched_cols': tbl_contents['unmatched_cols'],
-    'unmatched_rows': unmatched_rows
+    'unmatched_rows': unmatched_rows,
+    'input': {'a': table_a.lazy(), 'b': table_b.lazy()}
   }
 
   return out
