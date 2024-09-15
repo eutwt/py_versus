@@ -1,10 +1,19 @@
 import helpers as h
 import get_diff_rows as diff
+import value_diffs as vd
 from typing import Dict, Union, List 
 import polars as pl
+from collections import UserDict
 
 Match = Dict[str, Union[pl.DataFrame, pl.Series]] #todo: remove dupe def
 
+class Comparison(UserDict):
+  def __init__(self, data: Dict[str, pl.DataFrame]):
+    super().__init__(data)
+
+  def value_diffs(self, column: str):
+    return vd.value_diffs(self, column = column)
+    
 def compare(
     table_a: pl.DataFrame, table_b: pl.DataFrame, by: Union[str, List[str]]) -> List[pl.DataFrame]:
   
@@ -38,7 +47,7 @@ def compare(
     'input': {'a': table_a.lazy(), 'b': table_b.lazy()}
   }
 
-  return out
+  return Comparison(out)
 
 def vec_locate_matches(
     table_a: pl.LazyFrame, table_b: pl.LazyFrame, by: List[str]) -> pl.DataFrame:
