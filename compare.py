@@ -30,7 +30,7 @@ def compare(
     diff.get_diff_rows(col, table_a, table_b, matches=matches)
     for col in tbl_contents["compare"]["column"]
   ]
-  n_diffs = pl.Series(len(x.df["row_a"]) for x in diff_rows)
+  n_diffs = pl.Series(x.df.height for x in diff_rows)
   tbl_contents["compare"] = (
     tbl_contents["compare"]
     .with_columns(
