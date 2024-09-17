@@ -73,10 +73,10 @@ def split_matches(matches: pl.DataFrame) -> Match:
     a: rows only in table_a
     b: rows only in table_b
   """
-  is_b_only = matches["a"].is_null()
   is_a_only = matches["b"].is_null()
+  is_b_only = matches["a"].is_null()
   out: Match = {
-    "common": matches.filter(~is_b_only & ~is_a_only),
+    "common": matches.filter(~is_a_only & ~is_b_only),
     "a": matches["a"].filter(is_a_only),
     "b": matches["b"].filter(is_b_only),
   }
