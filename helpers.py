@@ -1,9 +1,14 @@
+from __future__ import annotations
+
+from typing import Dict, List
+
 import polars as pl
-from typing import List, Dict
+
+from data_structures import Comparison
 
 
 def contents(table: pl.DataFrame) -> pl.DataFrame:
-  out_dict = {col: str(table[col].dtype) for col in table.columns}
+  out_dict = {col: table[col].dtype for col in table.columns}
 
   out = pl.DataFrame(
     {"column": list(out_dict.keys()), "class": list(out_dict.values())}
@@ -12,7 +17,7 @@ def contents(table: pl.DataFrame) -> pl.DataFrame:
 
 
 def get_cols_from_comparison(
-  comparison: List[pl.DataFrame], column: List[str], allow_empty: bool = False
+  comparison: Comparison, column: List[str], allow_empty: bool = False
 ) -> Dict[str, int]:
   if not allow_empty and len(column) == 0:
     raise Exception("`column` argument must not be empty")

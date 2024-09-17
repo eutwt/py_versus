@@ -1,27 +1,20 @@
-import helpers as h
-import get_diff_rows as diff
-import value_diffs as vd
-from typing import Dict, Union, List
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Dict, List, Union
+
 import polars as pl
-from collections import UserDict
 
-Match = Dict[str, Union[pl.DataFrame, pl.Series]]  # todo: remove dupe def
+import get_diff_rows as diff
+import helpers as h
 
-
-class Comparison(UserDict):
-  def __init__(self, data: Dict[str, pl.DataFrame]):
-    super().__init__(data)
-
-  def value_diffs(self, column: str):
-    return vd.value_diffs(self, column=column)
-
+if TYPE_CHECKING:
+    from data_structures import Comparison, Match
 
 def compare(
   table_a: pl.DataFrame, table_b: pl.DataFrame, by: Union[str, List[str]]
-) -> List[pl.DataFrame]:
+) -> Comparison:
   if isinstance(by, str):
     by = [by]
-
   table_summ = pl.DataFrame(
     {
       "table": ["table_a", "table_b"],
@@ -54,12 +47,13 @@ def compare(
     "unmatched_rows": unmatched_rows,
     "input": {"a": table_a.lazy(), "b": table_b.lazy()},
   }
-
+  # todo: better fix for circular dependency
+  from data_structures import Comparison
   return Comparison(out)
 
 
 def vec_locate_matches(
-  table_a: pl.LazyFrame, table_b: pl.LazyFrame, by: List[str]
+  table_a: pl.DataFrame, table_b: pl.DataFrame, by: List[str]
 ) -> pl.DataFrame:
   lazy_a = table_a.lazy().with_row_index(name="vs_a_index")
   lazy_b = table_b.lazy().with_row_index(name="vs_b_index")
@@ -81,7 +75,7 @@ def split_matches(matches: pl.DataFrame) -> Match:
   """
   is_b_only = matches["a"].is_null()
   is_a_only = matches["b"].is_null()
-  out = {
+  out: Match = {
     "common": matches.filter(~is_b_only & ~is_a_only),
     "a": matches["a"].filter(is_a_only),
     "b": matches["b"].filter(is_b_only),
@@ -91,7 +85,7 @@ def split_matches(matches: pl.DataFrame) -> Match:
 
 
 def locate_matches(
-  table_a: pl.LazyFrame, table_b: pl.LazyFrame, by: List[str]
+  table_a: pl.DataFrame, table_b: pl.DataFrame, by: List[str]
 ) -> Match:
   match_df = vec_locate_matches(table_a, table_b, by)
   out = split_matches(match_df)
@@ -110,8 +104,8 @@ def get_unmatched_rows(
   unmatched = pl.concat(
     get_unmatched(name, df) for name, df in {"a": table_a, "b": table_b}.items()
   )
-
-  out = unmatched.with_columns(row=pl.concat([matches["a"], matches["b"]]))
+  unmatched_indices = pl.concat([matches["a"], matches["b"]])
+  out = unmatched.with_columns(row=unmatched_indices)
 
   return out
 
@@ -136,8 +130,8 @@ def converge(
 
 
 def join_split(
-  table_a: pl.DataFrame, table_b: pl.DataFrame, by: str
-) -> List[pl.DataFrame]:
+  table_a: pl.DataFrame, table_b: pl.DataFrame, by: List[str]
+) -> Dict[str, pl.DataFrame]:
   matches = locate_matches(table_a, table_b, by)
   intersection = converge(table_a, table_b, by, matches)
   unmatched_rows = get_unmatched_rows(table_a, table_b, by, matches)
@@ -146,8 +140,8 @@ def join_split(
 
 
 def get_contents(
-  table_a: pl.DataFrame, table_b: pl.DataFrame, by: str
-) -> List[pl.DataFrame]:
+  table_a: pl.DataFrame, table_b: pl.DataFrame, by: List[str]
+) -> Dict[str, pl.DataFrame]:
   tbl_contents = join_split(
     h.contents(table_a), h.contents(table_b), by=["column"]
   )

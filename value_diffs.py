@@ -1,9 +1,12 @@
-import helpers as h
-from typing import List
+from __future__ import annotations
+
 import polars as pl
 
+import helpers as h
+from data_structures import Comparison
 
-def value_diffs(comparison: List[pl.DataFrame], column: str) -> pl.DataFrame:
+
+def value_diffs(comparison: Comparison, column: str) -> pl.DataFrame:
   column_loc = h.get_cols_from_comparison(comparison, [column])
   h.assert_is_single_column(column_loc)
   if len(column_loc) == 0:
