@@ -10,14 +10,10 @@ def value_diffs(comparison: Comparison, column: str) -> pl.DataFrame:
   column_loc = h.get_cols_from_comparison(comparison, [column])
   h.assert_is_single_column(column_loc)
   if len(column_loc) == 0:
-    by = (
-      comparison["input"]["a"]
-      .select(list(comparison["by"]["column"]))
-      .filter(False)
-      .collect()
-    )
-    a_b = pl.DataFrame({column + "_a": [], column + "_b": []})
-    out = a_b.hstack(by)
+    a = h.init_df(comparison, "a").select(pl.col(column).alias(column + "_a"))
+    b = h.init_df(comparison, "b").select(pl.col(column).alias(column + "_b"))
+    by = h.init_df(comparison, "a").select(list(comparison["by"]["column"]))
+    out = pl.concat([a, b, by], how="horizontal")
     return out
 
   diff_rows = comparison["intersection"].item(
@@ -31,10 +27,13 @@ def value_diffs(comparison: Comparison, column: str) -> pl.DataFrame:
   )
   b = (
     comparison["input"]["b"]
-    .select([pl.col(col).alias(col + "_b")] + list(comparison["by"]["column"]))
+    .select(pl.col(col).alias(col + "_b"))
     .collect()[diff_rows.df["row_b"]]
   )
-
-  out = a.hstack(b)
-
+  by = (
+    comparison["input"]["a"]
+    .select(list(comparison["by"]["column"]))
+    .collect()[diff_rows.df["row_a"]]
+  )
+  out = pl.concat([a, b, by], how="horizontal")
   return out

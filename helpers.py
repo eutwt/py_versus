@@ -1,10 +1,17 @@
 from __future__ import annotations
 
-from typing import Dict, List
+from typing import Dict, List, Union, Literal
 
 import polars as pl
 
 from data_structures import Comparison
+
+AorB = Union[Literal["a"], Literal["b"]]
+
+
+def init_df(comparison: Comparison, table: AorB) -> pl.DataFrame:
+  out = comparison["input"][table].filter(False).collect()
+  return out
 
 
 def contents(table: pl.DataFrame) -> pl.DataFrame:
