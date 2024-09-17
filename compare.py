@@ -18,8 +18,8 @@ def compare(
   table_summ = pl.DataFrame(
     {
       "table": ["table_a", "table_b"],
-      "nrow": [table_a.height, table_b.height],
-      "ncol": [table_a.width, table_b.width],
+      "height": [table_a.height, table_b.height],
+      "width": [table_a.width, table_b.width],
     }
   )
   tbl_contents = get_contents(table_a, table_b, by=by)
