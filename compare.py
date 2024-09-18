@@ -8,7 +8,8 @@ import get_diff_rows as diff
 import helpers as h
 
 if TYPE_CHECKING:
-    from data_structures import Comparison, Match
+  from data_structures import Comparison, Match, RawComparison
+
 
 def compare(
   table_a: pl.DataFrame, table_b: pl.DataFrame, by: Union[str, List[str]]
@@ -39,16 +40,18 @@ def compare(
     .select("column", "n_diffs", "class_a", "class_b", "diff_rows")
   )
 
-  out = {
+  comparison = {
     "tables": table_summ,
     "by": tbl_contents["by"],
     "intersection": tbl_contents["compare"],
     "unmatched_cols": tbl_contents["unmatched_cols"],
     "unmatched_rows": unmatched_rows,
-    "input": {"a": table_a.lazy(), "b": table_b.lazy()},
   }
+  tables = {"a": table_a.lazy(), "b": table_b.lazy()}
+  out: RawComparison = {'comparison': comparison, 'tables': tables}
   # todo: better fix for circular dependency
   from data_structures import Comparison
+
   return Comparison(out)
 
 
@@ -101,11 +104,9 @@ def get_unmatched_rows(
     )
     return out
 
-  unmatched = pl.concat(
+  out = pl.concat(
     get_unmatched(name, df) for name, df in {"a": table_a, "b": table_b}.items()
-  )
-  unmatched_indices = pl.concat([matches["a"], matches["b"]])
-  out = unmatched.with_columns(row=unmatched_indices)
+  ).with_columns(row=pl.concat([matches["a"], matches["b"]]))
 
   return out
 

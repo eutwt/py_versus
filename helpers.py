@@ -10,7 +10,7 @@ AorB = Union[Literal["a"], Literal["b"]]
 
 
 def init_df(comparison: Comparison, table: AorB) -> pl.DataFrame:
-  out = comparison["input"][table].filter(False).collect()
+  out = getattr(comparison, table).filter(False).collect()
   return out
 
 
