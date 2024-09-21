@@ -48,7 +48,7 @@ def compare(
     "unmatched_rows": unmatched_rows,
   }
   tables = {"a": table_a.lazy(), "b": table_b.lazy()}
-  out: RawComparison = {'comparison': comparison, 'tables': tables}
+  out: RawComparison = {"comparison": comparison, "tables": tables}
   # todo: better fix for circular dependency
   from data_structures import Comparison
 

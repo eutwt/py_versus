@@ -13,6 +13,7 @@ class IndexDF:
     repr_str = f"IndexDF: ({self.df.height})"
     return repr_str
 
+
 def get_diff_rows(
   col: str, table_a: pl.DataFrame, table_b: pl.DataFrame, matches: Match
 ) -> IndexDF:
@@ -21,4 +22,3 @@ def get_diff_rows(
   out_df = matches["common"].filter(col_a != col_b)
   out_df.columns = ["row_a", "row_b"]
   return IndexDF(out_df)
-

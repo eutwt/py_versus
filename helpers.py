@@ -38,7 +38,23 @@ def get_cols_from_comparison(
     comparison["intersection"]
     .lazy()
     .with_row_index(name="row")
-    .filter(pl.col("n_diffs") > 0, pl.col("column").is_in(column))
+    .filter(pl.col("column").is_in(column))
+    .select("column", "row")
+    .collect()
+  )
+
+  out = dict(zip(out_df["column"], out_df["row"]))
+  return out
+
+
+def identify_diff_cols(
+  comparison: Comparison, column: List[str]
+) -> Dict[str, int]:
+  out_df = (
+    comparison["intersection"]
+    .lazy()
+    .with_row_index(name="row")
+    .filter(pl.col("column").is_in(column), pl.col("n_diffs") > 0)
     .select("column", "row")
     .collect()
   )
