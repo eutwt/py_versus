@@ -4,9 +4,7 @@ from typing import Dict, List, Union, Literal
 
 import polars as pl
 
-from data_structures import Comparison
-
-AorB = Union[Literal["a"], Literal["b"]]
+from data_structures import Comparison, AorB
 
 
 def init_df(comparison: Comparison, table: AorB) -> pl.DataFrame:
