@@ -1,10 +1,47 @@
 from __future__ import annotations
 
-from typing import Dict, List, Union, Literal
+from typing import Dict, List, Iterable
 
 import polars as pl
+from polars.type_aliases import IntoExpr
 
 from data_structures import Comparison, AorB
+
+i_type = str | pl.DataType | Iterable[str] | Iterable[pl.DataType]
+j_type = IntoExpr
+
+
+def height(df: pl.DataFrame | pl.LazyFrame) -> int:
+  return df.lazy().select(pl.len()).collect().item()
+
+
+def subset(
+  df: pl.LazyFrame,
+  i: i_type,
+  j: j_type = pl.all(),
+) -> pl.LazyFrame:
+  return df.select(j.gather(i))
+
+
+def esubset(
+  df: pl.DataFrame,
+  i: i_type,
+  j: j_type = pl.all(),
+) -> pl.DataFrame:
+  return df.select(j.gather(i))
+
+
+def collect_first(df: pl.LazyFrame) -> pl.Series:
+  out = (
+    df.select(pl.selectors.first())
+    .collect()
+    .pipe(lambda x: x.get_column(x.columns[0]))
+  )
+  return out
+
+
+def get_series(df: pl.LazyFrame, i: i_type, j: j_type) -> pl.Series:
+  return collect_first(subset(df, i, j))
 
 
 def init_df(comparison: Comparison, table: AorB) -> pl.DataFrame:

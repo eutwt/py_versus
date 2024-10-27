@@ -21,16 +21,19 @@ def value_diffs(comparison: Comparison, column: str) -> pl.DataFrame:
     list(column_loc.values())[0], "diff_rows"
   )
   col = list(column_loc.keys())[0]
-  a = comparison.a.select(pl.col(col).alias(col + "_a")).collect()[
-    diff_rows.df["row_a"]
-  ]
-  b = comparison.b.select(pl.col(col).alias(col + "_b")).collect()[
-    diff_rows.df["row_b"]
-  ]
-  by = comparison.a.select(list(comparison["by"]["column"])).collect()[
-    diff_rows.df["row_a"]
-  ]
-  out = pl.concat([a, b, by], how="horizontal")
+  a = (
+    comparison.a
+    .pipe(h.subset, diff_rows.df["row_a"], pl.col(col).alias(col + "_a"))
+  )
+  b = (
+    comparison.b
+    .pipe(h.subset, diff_rows.df["row_b"], pl.col(col).alias(col + "_b"))
+  )
+  by = (
+    comparison.a
+    .pipe(h.subset, diff_rows.df["row_a"], pl.col(comparison["by"]["column"]))
+  )
+  out = pl.concat([a, b, by], how="horizontal").collect()
   return out
 
 

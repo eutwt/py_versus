@@ -16,6 +16,8 @@ def compare(
 ) -> Comparison:
   if isinstance(by, str):
     by = [by]
+  lazy_a = table_a.lazy()
+  lazy_b = table_b.lazy()
   table_summ = pl.DataFrame(
     {
       "table": ["table_a", "table_b"],
@@ -24,11 +26,11 @@ def compare(
     }
   )
   tbl_contents = get_contents(table_a, table_b, by=by)
-  matches = locate_matches(table_a, table_b, by=by)
+  matches = locate_matches(lazy_a, lazy_b, by=by)
   unmatched_rows = get_unmatched_rows(table_a, table_b, by=by, matches=matches)
 
   diff_rows = [
-    diff.get_diff_rows(col, table_a, table_b, matches=matches)
+    diff.get_diff_rows(col, lazy_a, lazy_b, matches=matches)
     for col in tbl_contents["compare"]["column"]
   ]
   n_diffs = pl.Series(x.df.height for x in diff_rows)
@@ -47,7 +49,7 @@ def compare(
     "unmatched_cols": tbl_contents["unmatched_cols"],
     "unmatched_rows": unmatched_rows,
   }
-  tables = {"a": table_a.lazy(), "b": table_b.lazy()}
+  tables = {"a": lazy_a, "b": lazy_b}
   out: RawComparison = {"comparison": comparison, "tables": tables}
   # todo: better fix for circular dependency
   from data_structures import Comparison
@@ -56,13 +58,13 @@ def compare(
 
 
 def vec_locate_matches(
-  table_a: pl.DataFrame, table_b: pl.DataFrame, by: List[str]
+  table_a: pl.LazyFrame, table_b: pl.LazyFrame, by: List[str]
 ) -> pl.DataFrame:
-  lazy_a = table_a.lazy().with_row_index(name="vs_a_index")
-  lazy_b = table_b.lazy().with_row_index(name="vs_b_index")
+  a_with_ind = table_a.with_row_index(name="vs_a_index")
+  b_with_ind = table_b.with_row_index(name="vs_b_index")
 
-  merged = lazy_b.join(
-    lazy_a, on=by, how="full", join_nulls=True, validate="1:1"
+  merged = b_with_ind.join(
+    a_with_ind, on=by, how="full", join_nulls=True, validate="1:1"
   )
   out = merged.select(a=pl.col("vs_a_index"), b=pl.col("vs_b_index"))
 
@@ -88,7 +90,7 @@ def split_matches(matches: pl.DataFrame) -> Match:
 
 
 def locate_matches(
-  table_a: pl.DataFrame, table_b: pl.DataFrame, by: List[str]
+  table_a: pl.LazyFrame, table_b: pl.LazyFrame, by: List[str]
 ) -> Match:
   match_df = vec_locate_matches(table_a, table_b, by)
   out = split_matches(match_df)
@@ -99,14 +101,15 @@ def get_unmatched_rows(
   table_a: pl.DataFrame, table_b: pl.DataFrame, by: List[str], matches: Match
 ) -> pl.DataFrame:
   def get_unmatched(name, df):
-    out = df.select(by)[matches[name]].select(
+    out = df.pipe(h.esubset, matches[name], pl.col(by)).select(
       [pl.lit(name).alias("table")] + by
     )
     return out
 
-  out = pl.concat(
-    get_unmatched(name, df) for name, df in {"a": table_a, "b": table_b}.items()
-  ).with_columns(row=pl.concat([matches["a"], matches["b"]]))
+  tables = {"a": table_a, "b": table_b}.items()
+  out = pl.concat(get_unmatched(name, df) for name, df in tables).with_columns(
+    row=pl.concat([matches["a"], matches["b"]])
+  )
 
   return out
 
@@ -120,9 +123,9 @@ def converge(
     if (col in table_b.columns) and (col not in by)
   ]
 
-  by_a = table_a.select(by)[matches["common"]["a"]]
-  common_a = table_a.select(common_cols)[matches["common"]["a"]]
-  common_b = table_b.select(common_cols)[matches["common"]["b"]]
+  by_a = table_a.pipe(h.esubset, matches["common"]["a"], pl.col(by))
+  common_a = table_a.pipe(h.esubset, matches["common"]["a"], pl.col(common_cols))
+  common_b = table_b.pipe(h.esubset, matches["common"]["b"], pl.col(common_cols))
   common_a.columns = [col + "_a" for col in common_cols]
   common_b.columns = [col + "_b" for col in common_cols]
 
@@ -133,7 +136,7 @@ def converge(
 def join_split(
   table_a: pl.DataFrame, table_b: pl.DataFrame, by: List[str]
 ) -> Dict[str, pl.DataFrame]:
-  matches = locate_matches(table_a, table_b, by)
+  matches = locate_matches(table_a.lazy(), table_b.lazy(), by)
   intersection = converge(table_a, table_b, by, matches)
   unmatched_rows = get_unmatched_rows(table_a, table_b, by, matches)
   out = {"intersection": intersection, "unmatched_rows": unmatched_rows}

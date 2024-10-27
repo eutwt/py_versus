@@ -29,5 +29,5 @@ def slice_diffs_impl(
   rows = pl.concat(
     idxdf.df.select("row_" + table) for idxdf in indexDFs
   ).unique()["row_" + table]
-  out = getattr(comparison, table).select(j).collect()[rows]
+  out = getattr(comparison, table).pipe(h.subset, rows, j).collect()
   return out
